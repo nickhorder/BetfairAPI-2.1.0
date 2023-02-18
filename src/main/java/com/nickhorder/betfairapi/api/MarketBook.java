@@ -1,29 +1,28 @@
 package com.nickhorder.betfairapi.api;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nickhorder.betfairapi.entities.*;
-import com.nickhorder.betfairapi.enums.FlowControllerEnums;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.nickhorder.betfairapi.enums.ListEventTypesEnums;
 import com.nickhorder.betfairapi.enums.MatchProjection;
 import com.nickhorder.betfairapi.enums.OrderProjection;
 import com.nickhorder.betfairapi.exceptions.APINGException;
-//import com.betfair.aping.util.JsonConverter;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
+
 import com.nickhorder.betfairapi.entities.PriceProjection;
 import com.nickhorder.betfairapi.entities.PriceSize;
 import com.nickhorder.betfairapi.entities.Runner;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.*;
 
 
 
 public class MarketBook {
-	private String marketId;
 
+	private static Properties prop = new Properties();
+	private static String bettingAPIURL;
+
+	private String marketId;
 	private Boolean isMarketDataDelayed;
 	private String status;
 	private int betDelay;
@@ -48,6 +47,22 @@ public class MarketBook {
 	protected static final String PRICE_PROJECTION = "priceProjection";
 	protected static final String MATCH_PROJECTION = "matchProjection";
 	protected static final String ORDER_PROJECTION = "orderProjection";
+	//temp
+	private List<PriceSize> availableToBack;
+
+	static {
+		try {
+			InputStream in = MarketBook.class.getResourceAsStream("/apingdemo.properties");
+
+			prop.load(in);
+			in.close();
+
+			bettingAPIURL = prop.getProperty("BETTING_URL");
+
+		} catch (IOException e) {
+			System.out.println("Error loading the properties file: " + e);
+		}
+	}
 
 	public static List<MarketBook> listMarketBook(List<String> marketIds, PriceProjection priceProjection, OrderProjection orderProjection,
 												  MatchProjection matchProjection, String currencyCode, String appKey, String ssoId) throws APINGException, IOException {
@@ -57,27 +72,25 @@ public class MarketBook {
 		params.put(PRICE_PROJECTION, priceProjection);
 		params.put(ORDER_PROJECTION, orderProjection);
 		params.put(MATCH_PROJECTION, matchProjection);
-		String result = HttpApiCaller.makeRequest(FlowControllerEnums.LISTMARKETBOOK.getOperationName(), params, appKey, ssoId);
+		String result = HttpApiCaller.makeRequest(ListEventTypesEnums.LISTMARKETBOOK.getOperationName(), params, appKey, ssoId, bettingAPIURL);
 
 		final ObjectMapper objectMapper = new ObjectMapper();
 		// 	objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		List<MarketBook> container = objectMapper.readValue(result, new TypeReference<List<MarketBook>>() {});
+	 //	 System.out.println("MarketBook Response: " + container);
 
-	//	List<MarketBook> container = JsonConverter.convertFromJson(result, new TypeToken<List<MarketBook>>() {
-	//	}.getType());
-	//	 System.out.println("Arrays?" + Arrays.toString(container.toArray()));
 
 		return container;
-
 	}
 
-	public List<PriceSize> getPrice() {
-		return price;
+
+    public List<PriceSize> getPrice() {
+ 		return price;
 	}
 
 	public void setPrice(List<PriceSize> price) {
-		this.price = price;
-	}
+ 	this.price = price;
+ 	}
 
  	public List<Runner> getRunners() {
  		return runners;
@@ -86,6 +99,15 @@ public class MarketBook {
  	public void setRunners(List<Runner> runners) {
  		this.runners = runners;
  	}
+
+	public List<PriceSize> getAvailableToBack() {
+		return availableToBack;
+	}
+	public void setAvailableToBack(List<PriceSize> availableToBack) {
+		this.availableToBack = availableToBack;
+	}
+	//
+
 
 	public String getMarketId() {
 		return marketId;
@@ -217,21 +239,21 @@ public class MarketBook {
 
 	public String toString() {
 		return "marketId=" + getMarketId() + "\n"
-				+ "isMarketDataDelayed=" + getIsMarketDataDelayed() + "\n"
-				+ "status=" + getStatus() + "\n"
-				+ "betDelay=" + getBetDelay() + "\n"
-				+ "bspReconciled=" + getBspReconciled() + "\n"
-				+ "complete=" + getComplete() + "\n"
-				+ "inplay=" + getInplay() + "\n"
-				+ "numberOfWinners=" + getNumberOfWinners() + "\n"
-				+ "numberOfRunners=" + getNumberOfRunners() + "\n"
-				+ "numberOfActiveRunners=" + getNumberOfActiveRunners() + "\n"
-				+ "lastMatchTime=" + getLastMatchTime()  + "\n"
-				+ "totalMatched=" + getTotalMatched()  + "\n"
-				+ "totalAvailable="	+ getTotalAvailable()  + "\n"
-				+ "crossMatching=" + getCrossMatching()  + "\n"
-				+ "runnersVoidable=" + getRunnersVoidable()  + "\n"
-				+ "version=" + getVersion()  + "\n"
+		//		+ "isMarketDataDelayed=" + getIsMarketDataDelayed() + "\n"
+		    	+ "Race Status=" + getStatus() + "\n"
+		//		+ "betDelay=" + getBetDelay() + "\n"
+		//		+ "bspReconciled=" + getBspReconciled() + "\n"
+		//		+ "complete=" + getComplete() + "\n"
+		//		+ "inplay=" + getInplay() + "\n"
+		//		+ "numberOfWinners=" + getNumberOfWinners() + "\n"
+		//		+ "numberOfRunners=" + getNumberOfRunners() + "\n"
+		//		+ "numberOfActiveRunners=" + getNumberOfActiveRunners() + "\n"
+		//		+ "lastMatchTime=" + getLastMatchTime()  + "\n"
+		//		+ "totalMatched=" + getTotalMatched()  + "\n"
+		//		+ "totalAvailable="	+ getTotalAvailable()  + "\n"
+		//		+ "crossMatching=" + getCrossMatching()  + "\n"
+		//		+ "runnersVoidable=" + getRunnersVoidable()  + "\n"
+		//		+ "version=" + getVersion()  + "\n"
 	 		    + "runners=" + getRunners()  + "\n";
 	}
 

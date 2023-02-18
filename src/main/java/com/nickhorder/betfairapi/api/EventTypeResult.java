@@ -2,31 +2,48 @@ package com.nickhorder.betfairapi.api;
 
 import com.nickhorder.betfairapi.entities.EventType;
 import com.nickhorder.betfairapi.entities.MarketFilter;
-import com.nickhorder.betfairapi.enums.FlowControllerEnums;
+import com.nickhorder.betfairapi.enums.ListEventTypesEnums;
 import com.nickhorder.betfairapi.exceptions.APINGException;
-//import com.betfair.aping.util.JsonConverter;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.io.InputStream;
+import java.util.*;
 
 public class EventTypeResult {
+	private static Properties prop = new Properties();
+	private static String bettingAPIURL;
 	private EventType eventType ;
 	private int marketCount;
 	protected static final String FILTER = "filter";
 	protected static final String LOCALE = "locale";
 	protected static final String locale = Locale.getDefault().toString();
 
+	static {
+		try {
+			InputStream in = EventTypeResult.class.getResourceAsStream("/apingdemo.properties");
+
+			prop.load(in);
+			in.close();
+
+			bettingAPIURL = prop.getProperty("BETTING_URL");
+
+		} catch (IOException e) {
+			System.out.println("Error loading the properties file: " + e);
+		}
+	}
+
+
+
+
+
 	public static List<EventTypeResult> listEventTypes(MarketFilter filter, String appKey, String ssoId) throws APINGException, IOException {
 		Map<String, Object> params = new HashMap<>();
 		params.put(FILTER, filter);
 		params.put(LOCALE, locale);
-		String result = HttpApiCaller.makeRequest(FlowControllerEnums.LISTEVENTTYPES.getOperationName(), params, appKey, ssoId);
+		String result = HttpApiCaller.makeRequest(ListEventTypesEnums.LISTEVENTTYPES.getOperationName(), params, appKey, ssoId, bettingAPIURL);
 		//  if(ApiNGAuthMain.isDebug())
 		//     System.out.println("\nlistEventTypes Response: "+result);
 

@@ -132,17 +132,10 @@ public class MarketFilter {
 	public TimeRange getMarketStartTime() {
 		return marketStartTime;
 	}
-	//public TimeRange getMarketStartTime() {
-	//		return marketStartTime;
-	//	}
 
 	public void setMarketStartTime(TimeRange marketStartTime) {
 		this.marketStartTime = marketStartTime;
 	}
-	//public void setMarketStartTime(TimeRange marketStartTime) {
-	//	this.marketStartTime = marketStartTime;
-//	}
-
 
 	public Set<OrderStatus> getWithOrders() {
 		return withOrders;

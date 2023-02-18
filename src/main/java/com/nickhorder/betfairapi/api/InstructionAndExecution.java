@@ -5,15 +5,18 @@ import com.nickhorder.betfairapi.entities.PlaceInstruction;
 import com.nickhorder.betfairapi.enums.*;
 import com.nickhorder.betfairapi.exceptions.APINGException;
 //import com.betfair.aping.util.JsonConverter;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nickhorder.betfairapi.enums.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 public class InstructionAndExecution {
+
+	private static Properties prop = new Properties();
+	private static String bettingAPIURL;
+
 	//InstructionReport Fields
 	private InstructionReportStatus instructionReportStatus;
 	private InstructionReportErrorCode instructionReportErrorCode;
@@ -36,15 +39,31 @@ public class InstructionAndExecution {
 	private List<InstructionAndExecution> instructionReports;
 
 
+	static {
+		try {
+			InputStream in = InstructionAndExecution.class.getResourceAsStream("/apingdemo.properties");
+
+			prop.load(in);
+			in.close();
+
+			bettingAPIURL = prop.getProperty("BETTING_URL");
+
+		} catch (IOException e) {
+			System.out.println("Error loading the properties file: " + e);
+		}
+	}
+
+
+
 	public static InstructionAndExecution placeOrders(String marketId, List<PlaceInstruction> instructions, String customerRef , String appKey, String ssoId) throws APINGException, IOException {
 		Map<String, Object> params = new HashMap<>();
 		params.put(LOCALE, locale);
 		params.put(MARKET_ID, marketId);
 		params.put(INSTRUCTIONS, instructions);
 		params.put(CUSTOMER_REF, customerRef);
-		String result = HttpApiCaller.makeRequest(FlowControllerEnums.PLACORDERS.getOperationName(), params, appKey, ssoId);
-		//if(ApiNGAuthMain.isDebug())
-		System.out.println("\nplaceOrders Response: "+result);
+		String result = HttpApiCaller.makeRequest(ListEventTypesEnums.PLACORDERS.getOperationName(), params, appKey, ssoId, bettingAPIURL);
+
+		//System.out.println("\nplaceOrders Response: "+result);
 
 		final ObjectMapper objectMapper = new ObjectMapper();
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

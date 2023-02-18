@@ -16,9 +16,9 @@ public class RescriptResponseHandler implements ResponseHandler<String> {
         StatusLine statusLine = response.getStatusLine();
         HttpEntity entity = response.getEntity();
         if (statusLine.getStatusCode() != 200) {
-
+        System.out.println("Hello! RescriptResponseHandler is being used");
             String s = entity == null ? null : EntityUtils.toString(entity, ENCODING_UTF_8);
-            System.out.println("Call to api-ng failed\n");
+            System.out.println("Call to Betfair API failed\n");
             System.out.println(s);
             System.exit(0);
 

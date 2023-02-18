@@ -1,7 +1,7 @@
 package com.nickhorder.betfairapi.api;
 
 import com.nickhorder.betfairapi.entities.*;
-import com.nickhorder.betfairapi.enums.FlowControllerEnums;
+import com.nickhorder.betfairapi.enums.ListEventTypesEnums;
 import com.nickhorder.betfairapi.enums.MarketProjection;
 import com.nickhorder.betfairapi.enums.MarketSort;
 import com.nickhorder.betfairapi.exceptions.APINGException;
@@ -9,12 +9,15 @@ import com.nickhorder.betfairapi.exceptions.APINGException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nickhorder.betfairapi.entities.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 public class MarketCatalogue {
+
+	private static Properties prop = new Properties();
+	private static String bettingAPIURL;
 
 	private String marketId;
 	private String marketName;
@@ -31,6 +34,22 @@ public class MarketCatalogue {
 	protected static final String MAX_RESULT = "maxResults";
 	protected static final String MARKET_PROJECTION = "marketProjection";
 
+	static {
+		try {
+			InputStream in = MarketCatalogue.class.getResourceAsStream("/apingdemo.properties");
+
+			prop.load(in);
+			in.close();
+
+			bettingAPIURL = prop.getProperty("BETTING_URL");
+
+		} catch (IOException e) {
+			System.out.println("Error loading the properties file: " + e);
+		}
+	}
+
+
+
 	public static List<MarketCatalogue> listMarketCatalogue(MarketFilter filter, Set<MarketProjection> marketProjection,
 															MarketSort sort, String maxResult, String appKey, String ssoId) throws APINGException, IOException {
 		Map<String, Object> params = new HashMap<>();
@@ -39,7 +58,8 @@ public class MarketCatalogue {
 		params.put(SORT, sort);
 		params.put(MAX_RESULT, maxResult);
 		params.put(MARKET_PROJECTION, marketProjection);
-		String result = HttpApiCaller.makeRequest(FlowControllerEnums.LISTMARKETCATALOGUE.getOperationName(), params, appKey, ssoId);
+
+		String result = HttpApiCaller.makeRequest(ListEventTypesEnums.LISTMARKETCATALOGUE.getOperationName(), params, appKey, ssoId, bettingAPIURL);
 		//  if(ApiNGAuthMain.isDebug())
 		System.out.println("\nlistMarketCatalogue Response: "+result);
 

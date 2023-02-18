@@ -1,7 +1,6 @@
 package com.nickhorder.betfairapi.api;
 
 import com.nickhorder.betfairapi.exceptions.APINGException;
-//import com.betfair.aping.util.JsonConverter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -70,26 +69,24 @@ public class HttpApiCaller {
     }
 
 
-    public String sendRequest(String param, String operation, String appKey, String ssoToken) throws APINGException {
-        String apiNgURL = ApiNGAuthMain.getProp().getProperty("APING_URL") + ApiNGAuthMain.getProp().getProperty("RESCRIPT_SUFFIX") + operation + "/";
+    public String sendRequest(String param, String operation, String appKey, String ssoToken, String URL) throws APINGException {
 
-        return sendPostRequest(param, operation, appKey, ssoToken, apiNgURL, new RescriptResponseHandler());
+        String finalURL = URL + ApiNGAuthMain.getProp().getProperty("RESCRIPT_SUFFIX") + operation + "/";
+        return sendPostRequest(param, operation, appKey, ssoToken, finalURL, new RescriptResponseHandler());
     }
 
-    public static String makeRequest(String operation, Map<String, Object> params, String appKey, String ssoToken) throws APINGException, JsonProcessingException {
+    public static String makeRequest(String operation, Map<String, Object> params, String appKey, String ssoToken, String URL) throws APINGException, JsonProcessingException {
         String requestString;
         //Handling the Rescript request
         params.put("id", 1);
 
         ObjectMapper mapper = new ObjectMapper();
         requestString = mapper.writeValueAsString(params);
-    //    requestString = JsonConverter.convertToJson(params);
-        if (ApiNGAuthMain.isDebug())
-            System.out.println("\nmakeRequest Request: " + requestString);
 
         //We need to pass the "sendPostRequest" method a string in util format:  requestString
         HttpApiCaller requester = new HttpApiCaller();
-        String response = requester.sendRequest(requestString, operation, appKey, ssoToken);
+        String response = requester.sendRequest(requestString, operation, appKey, ssoToken, URL);
+
         if (response != null)
             return response;
         else

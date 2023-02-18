@@ -21,6 +21,6 @@ public class PriceSize {
 
 	public String toString() {
 		return     "price=" + getPrice() + "\n"
-				   + "size=" + getSize() + "\n";
+				 + "size=" + getSize() + "\n";
 	}
 }

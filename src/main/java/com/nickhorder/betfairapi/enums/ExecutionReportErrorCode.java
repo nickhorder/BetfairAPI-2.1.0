@@ -6,7 +6,7 @@ public enum ExecutionReportErrorCode {
 	BET_ACTION_ERROR("There is an error with an action that has caused the entire order to be rejected"),
 	INVALID_ACCOUNT_STATE("Order rejected due to the account's status (suspended, inactive, dup cards)"),
 	INVALID_WALLET_STATUS("Order rejected due to the account's wallet's status"),
-	INSUFFICIENT_FUNDS("Account has exceeded its exposure limit or available to bet limit"),
+	INSUFFICIENT_FUNDS("GetAccountFunds has exceeded its exposure limit or available to bet limit"),
 	LOSS_LIMIT_EXCEEDED("The account has exceed the self imposed loss limit"), 
 	MARKET_SUSPENDED("Market is suspended"),
 	MARKET_NOT_OPEN_FOR_BETTING("Market is not open for betting, either inactive, suspended or closed"),

@@ -5,10 +5,9 @@ import java.util.List;
 import com.nickhorder.betfairapi.api.MarketBook;
 
 public class Runner extends MarketBook {
-
 	private Long selectionId;
 	private Double handicap;
-	private String runnerStatus;
+ 	private String status;
 	private Double adjustmentFactor;
 	private Double lastPriceTraded;
 	private Double runnerTotalMatched;
@@ -17,9 +16,9 @@ public class Runner extends MarketBook {
 	private StartingPrices nearPrice;
 	//more StartingPrices to put in here if necessary
 	private ExchangePrices ex;
-	private List<PriceSize> availableToBack;
-	private List<PriceSize> availableToLay;
-	private List<PriceSize> tradedVolume;
+	private  List<PriceSize> availableToBack;
+	private  List<PriceSize> availableToLay;
+	private  List<PriceSize> tradedVolume;
 	private List<Order> orders;
 	private List<Match> matches;
 	private Double runnerPrice;
@@ -50,13 +49,13 @@ public class Runner extends MarketBook {
 		this.handicap = handicap;
 	}
 
-	public String getRunnerStatus() {
-		return runnerStatus;
-	}
+ 	public String getRunnerStatus() {
+ 	return status;
+ 	}
 
-	public void setRunnerStatus(String status) {
-		this.runnerStatus = runnerStatus;
-	}
+ 	public void setRunnerStatus(String status) {
+ 		this.status = status;
+ 	}
 
 	public Double getAdjustmentFactor() {
 		return adjustmentFactor;
@@ -106,7 +105,7 @@ public class Runner extends MarketBook {
 		this.ex = ex;
 	}
 
-	public List<PriceSize> getAvailableToBack() {
+	public  List<PriceSize> getAvailableToBack() {
 		return availableToBack;
 	}
 
@@ -149,16 +148,17 @@ public class Runner extends MarketBook {
 	public String toString() {
 		return  "selectionId=" + getSelectionId() + "\n"
 				+ "handicap=" + getHandicap() + "\n"
-				+ "status=" + getStatus() + "\n"
+		//		+ "runnerStatus" + getRunnerStatus() + "\n"
+				+ "Runner Status=" + getStatus() + "\n"
 				+ "adjustmentFactor=" + getAdjustmentFactor() + "\n"
 				+ "lastPriceTraded=" + getLastPriceTraded() + "\n"
 				+ "totalMatched=" + getTotalMatched() + "\n"
 				+ "removalDate=" + getRemovalDate() + "\n"
 				+ "sp=" + getSp() + "\n"
 				//SP data not returned on Development key
-				+ "ex="	+ getEx() + "\n"
-				+ "availableToBack=" + getAvailableToBack() + "\n"
-				+ "price=" + getPrice() + "\n"
+				//+ "ex="	+ getEx() + "\n"
+				+ "ATL Prices=" + getEx().getAvailableToLay() + "\n"
+				+ "ATB Prices=" + getEx().getAvailableToBack() + "\n"
 				+ "orders=" + getOrders() + "\n"
 				+ "matches=" + getMatches() + "\n" ;
 	}

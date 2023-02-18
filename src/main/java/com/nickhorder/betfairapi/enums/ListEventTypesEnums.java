@@ -1,6 +1,6 @@
 package com.nickhorder.betfairapi.enums;
 
-public enum FlowControllerEnums {
+public enum ListEventTypesEnums {
 	LISTEVENTTYPES("listEventTypes"), 
 	LISTCOMPETITIONS("listCompetitions"),
 	LISTTIMERANGES("listTimeRanges"),
@@ -14,7 +14,7 @@ public enum FlowControllerEnums {
 	
 	private String operationName;
 	
-	private FlowControllerEnums(String operationName){
+	private ListEventTypesEnums(String operationName){
 		this.operationName = operationName;
 	}
 

@@ -30,7 +30,6 @@ import java.util.*;
 
 public class HttpAuth {
 
-
     public HttpAuth() {
         super();
     }

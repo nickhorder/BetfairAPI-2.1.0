@@ -1,11 +1,8 @@
 package com.nickhorder.betfairapi.api;
 
-//import com.betfair.aping.api.ApiNgOperations;
 import com.nickhorder.betfairapi.entities.*;
 import com.nickhorder.betfairapi.enums.*;
 import com.nickhorder.betfairapi.exceptions.APINGException;
-import com.nickhorder.betfairapi.entities.*;
-import com.nickhorder.betfairapi.enums.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -22,53 +19,53 @@ ApiNGFlowController
  */
 public class ApiNGFlowController {
 
-    //	private ApiNgFlowControllerOperations instanceOfOperations = ApiNgFlowControllerOperations.getInstance();
     private String applicationKey;
     private String sessionToken;
+    private boolean isBackBet;
+    private boolean isLayBet;
 
-    public void runAPIs(String appKey, String ssoid) {
+
+
+    public void runAPIs(String appKey,
+                        String ssoid,
+                        NavigableMap<Double,Double> stakeMultiplierMap,
+                        List<SyntheticBalanceSheet> daySyntheticBalanceSheet,
+                        double betCounter,
+                        List<String> lastBetMarketID,
+                        List<Long> lastFavouriteSelectionID,
+                        List<Double> lastFavouriteSyntheticStake,
+                        List<Double> lastFavouriteSyntheticReturns) throws IOException, APINGException {
 
         this.applicationKey = appKey;
         this.sessionToken = ssoid;
 
+
+ /**
+ ListMarketCatalogue: Get next available horse races, parameters:
+ eventTypeIds : 7 - get all available horse races for event id 7 (horse racing)
+ maxResults: 1 - specify number of results returned (narrowed to 1 to get first race)
+ marketStartTime: specify date (must be in this format: yyyy-mm-ddTHH:MM:SSZ)
+ sort: FIRST_TO_START - specify sort order to first to start race
+ **/
+
         try {
-/**
- ListEventTypes: Search for the event types and then for the "Horse Racing" in the returned list to finally get
- the listEventTypeId
- */
             MarketFilter marketFilter;
             marketFilter = new MarketFilter();
-            Set<String> eventTypeIds = new HashSet<String>();
 
-            //1.(listEventTypes) Get all Event Types
-            List<EventTypeResult> r = EventTypeResult.listEventTypes(marketFilter, applicationKey, sessionToken);
-            //". Extract Event Type Id for Horse Racing...\n");
-            for (EventTypeResult eventTypeResult : r) {
-                if (eventTypeResult.getEventType().getName().equals("Horse Racing")) {
-                    //System.out.println("3. EventTypeId for \"Horse Racing\" is: " + eventTypeResult.getEventType().getId()+"\n");
-                    eventTypeIds.add(eventTypeResult.getEventType().getId().toString());
-                }
-            }
+            System.out.println("listMarketCataloque - Get next horse racing market in the UK:");
 
-            /**
-             * ListMarketCatalogue: Get next available horse races, parameters:
-             * eventTypeIds : 7 - get all available horse races for event id 7 (horse racing)
-             * maxResults: 1 - specify number of results returned (narrowed to 1 to get first race)
-             * marketStartTime: specify date (must be in this format: yyyy-mm-ddTHH:MM:SSZ)
-             * sort: FIRST_TO_START - specify sort order to first to start race
-             */
-            System.out.println("4.(listMarketCataloque) Get next horse racing market in the UK:");
-
-            //old method
             TimeRange time = new TimeRange();
             time.setFrom(new Date());
-            //System.out.println(time.getFrom());
 
             Set<String> countries = new HashSet<>();
             countries.add("GB");
 
             Set<String> typesCode = new HashSet<>();
             typesCode.add("WIN");
+
+            //Hard coding eventTypeIds to 7, it's unlikely to change and saves calling the API each time
+            Set<String> eventTypeIds = new HashSet<>();
+            eventTypeIds.add("7");
 
             marketFilter = new MarketFilter();
             marketFilter.setEventTypeIds(eventTypeIds);
@@ -82,43 +79,71 @@ public class ApiNGFlowController {
 
             String maxResults = "1";
 
-            List<MarketCatalogue> marketCatalogueResult = MarketCatalogue.listMarketCatalogue(marketFilter,
+             List<MarketCatalogue> marketCatalogueResult = MarketCatalogue.listMarketCatalogue(marketFilter,
                     marketProjection,
-                    MarketSort.FIRST_TO_START,
-                    maxResults,
+                     MarketSort.FIRST_TO_START,
+                     maxResults,
                     applicationKey, sessionToken);
             //System.out.println("5. Print static marketId, name and runners....\n");
              // printMarketCatalogue(marketCatalogueResult.get(0));
 
 /**
- * sleepCalculator: call the sleepCalculator method within Program Pause.
+ * nextRaceSleepCalculator: call the nextRaceSleepCalculator method within TimeHandler.
  * This will calculate the time in seconds between now and the next race, subtracting a certain amount
  * Of seconds before "the off".
  * If this calculation is > x seconds, pause until it's not. If less, (or at the end of the pause),
  * we return to the market. The idea here is to get in just before the off, where the market is as
  * liquid as it's going to be.
- * Note that if the next race is over 6 hours away, we infer that racing has finished for the day
- * (or there is none) and call programCheckStart to shutdown.
+ * Note that if the next race is a long time away, we infer that racing has finished for the day
+ * (or there is none) and call programStartStop to shutdown.
  */
-            ProgramPause calculatePause = new ProgramPause();
-            String marketStart = marketCatalogueResult.get(0).getMarketStartTime();
-            calculatePause.nextRaceSleepCalculator(marketStart);
+            TimeHandler calculatePause = new TimeHandler();
+             String marketStart = marketCatalogueResult.get(0).getMarketStartTime();
 
-            if (!ProgramPause.getMoreRacingToday()) {
-                ProgramPause.programStartStop(ProgramPause.getMoreRacingToday());
+             calculatePause.nextRaceSleepCalculator(marketStart);
+
+            //If no more racing today, shut down
+            if (!TimeHandler.getMoreRacingToday()) {
+                TimeHandler.programStartStop(TimeHandler.getMoreRacingToday());
                }
 
+/**
+ * After coming back from our sleep, we check whether this is the first bet of the day (in which case skip this)
+ * If not, we need to update the synthetic balance sheet with the result of the last race.
+ * Note that when it's a very busy raceday, it's possible for one race not to have finished before the next one starts.
+ * Need to put in some pause logic that will wait for the last race result. Knowing the result of the last race is more
+ * important than missing the next, for our strategy.
+  */
+            System.out.println("betCounter after sleep: " + betCounter);
+
+            if (betCounter > 0){
+                System.out.println("Going to grabPreviousRaceDetails");
+
+                List<PreviousRaceResults> marketBookReturnPreviousRace = PreviousRaceResults.listPreviousMarketBook(lastBetMarketID,
+                        applicationKey, sessionToken);
+                PreviousRaceResults lastRaceResults = marketBookReturnPreviousRace.get(0);
+
+            //    System.out.println("Previous Race Details: " + lastRaceResults);
+
+                //Pass runners from previous race to identify whether the favourite won. Remember we need to do this for the
+                //Synthetic Balance, regardless of whether we placed an actual bet in the last race or not.
+                PreviousRaceResults.lastFavouriteWonOrLost(lastFavouriteSelectionID, lastRaceResults);
+            }
 
 /**
  * ListMarketBook: get list of runners in the market, parameters:
  * marketId:  the market we want to list runners
  * Note that I don't think BSP data is available unless you use a Live App Key (I have Delayed currently)
- *
  */
                 System.out.println("6.(listMarketBook) Get volatile info for Market including best 3 exchange prices available...\n");
-                String marketIdChosen = marketCatalogueResult.get(0).getMarketId();
+                String nextRaceMarketIdChosen = marketCatalogueResult.get(0).getMarketId();
 
-                PriceProjection priceProjection = new PriceProjection();
+                //Hardcode a particular market - i.e one that is in the past. When going live, this will be
+            // marketIDChosen.
+                String lastMarketID = "1.210081920";
+            //System.out.println(((Object)nextRaceMarketIdChosen).getClass().getName());
+
+            PriceProjection priceProjection = new PriceProjection();
                 Set<PriceData> priceData = new HashSet<>();
                 priceData.add(PriceData.EX_BEST_OFFERS);
                 priceData.add(PriceData.SP_AVAILABLE);
@@ -133,25 +158,94 @@ public class ApiNGFlowController {
                 MatchProjection matchProjection = null;
                 String currencyCode = null;
 
-                List<String> marketIds = new ArrayList<>();
-                marketIds.add(marketIdChosen);
+                List<String> nextRaceMarketIds = new ArrayList<>();
+                nextRaceMarketIds.add(nextRaceMarketIdChosen);
 
-                List<MarketBook> marketBookReturn = MarketBook.listMarketBook(marketIds, priceProjection,
+                List<MarketBook> marketBookReturn = MarketBook.listMarketBook(nextRaceMarketIds, priceProjection,
                         orderProjection, matchProjection, currencyCode, applicationKey, sessionToken);
 
+/**
+ * identifyFavourite: pass the marketBookReturn to this method within MarketBookProcessing, and take back
+ * a map of SelectionID and Back odds[0] for the Favourite.
+ */
+            MarketBook nextRaceMBReturn = marketBookReturn.get(0);
+            Map.Entry<Long, Double> marketBookProcessingReturn = MarketBookProcessing.identifyFavourite(nextRaceMBReturn);
 
-         //   ArrayList<List> arrList=new ArrayList<>();
-          //  arrList.add(marketBookReturn.get(0).getRunners());
-          //  System.out.println("Number of elements in arrList: "+arrList.size()); ,its one, this is rubbish
-         //   System.out.println("arrList: " + arrList);
+            //Assign Favourite's Selection ID and Odds to primitive types to make clearer in subsequent processing
+            long nextRaceFavouriteSelectionID = marketBookProcessingReturn.getKey();
+            double nextRaceFavouriteOdds = marketBookProcessingReturn.getValue();
+
+/**
+* StrategyManager calls: pass various attributes into the StrategyManager class for decisioning
+ */
+            // Calculate nextRaceSyntheticStake
+            double nextRaceSyntheticStake = StrategyManager.calculateSyntheticStake(daySyntheticBalanceSheet);
+            // Calculate nextRaceSyntheticReturns
+            double nextRaceSyntheticReturns = StrategyManager.calculateSyntheticReturns(nextRaceFavouriteOdds, nextRaceSyntheticStake);
+
+            System.out.println("nextRaceSyntheticStake: " + nextRaceSyntheticStake);
+            System.out.println("nextRaceSyntheticReturns: " + nextRaceSyntheticReturns);
+
+            // Call AccountsAPI to get current live balance
+            AccountFunds accountFundsInstance = AccountFunds.getAccountFunds(applicationKey, sessionToken);
+            double currentLiveBalance = accountFundsInstance.getAvailableToBetBalance();
+
+            //Identify live stake by multiiplying Stake Multiplied by Balance and SyntheticSMA moderator
+            double nextRaceStakeMultiplied = StrategyManager.calculateStakeMultiplied(nextRaceFavouriteOdds, stakeMultiplierMap, currentLiveBalance);
+
+            if (nextRaceStakeMultiplied > 0){
+                isBackBet = true;
+                betCounter += 1;
+                //nextRaceMarketIdChosen will be the list to use when going live, not lastMarketID which is a testing o/r
+
+                lastBetMarketID.add(lastMarketID);
+                //Long spoofFavourite = 44544270l;
+                //lastFavouriteSelectionID.add(spoofFavourite);
+                lastFavouriteSelectionID.add(nextRaceFavouriteSelectionID);
+                lastFavouriteSyntheticStake.add(nextRaceSyntheticStake);
+                lastFavouriteSyntheticReturns.add(nextRaceSyntheticReturns);
+                System.out.println("lastMarketID being added? " + lastBetMarketID);
+                System.out.println("Is BackBet? " + isBackBet + " BetCounter: " + betCounter);
+                //Call StrategyManager.backBetPrepare
+            }
+            if (nextRaceStakeMultiplied < 0){
+                isLayBet = true;
+                betCounter += 1;
+                //nextRaceMarketIdChosen will be the list to use when going live, not lastMarketID which is a testing o/r
+                // Add the last MarketID to lastBetMarketID, which will be picked up before the next race.
+                lastBetMarketID.add(lastMarketID);
+                //Long spoofFavourite = 44544270l;
+                //lastFavouriteSelectionID.add(spoofFavourite);
+                // Add current Favourite SelectionID to lastFavouriteSelectionID, which will be picked up before
+                // the next race.
+                lastFavouriteSelectionID.add(nextRaceFavouriteSelectionID);
+                lastFavouriteSyntheticStake.add(nextRaceSyntheticStake);
+                lastFavouriteSyntheticReturns.add(nextRaceSyntheticReturns);
+                System.out.println("lastMarketID being added? " + lastBetMarketID);
+                System.out.println("Is LayBet? " + isLayBet + " BetCounter: " + betCounter);
+            }
+            if (nextRaceStakeMultiplied == 0) {
+                // skip everything bar synthetic work
+                betCounter += 1;
+                //nextRaceMarketIdChosen will be the list to use when going live, not lastMarketID which is a testing o/r
+                lastBetMarketID.add(lastMarketID);
+                lastFavouriteSelectionID.add(nextRaceFavouriteSelectionID);
+                lastFavouriteSyntheticStake.add(nextRaceSyntheticStake);
+                lastFavouriteSyntheticReturns.add(nextRaceSyntheticReturns);
+                System.out.println("lastMarketID being added? " + lastBetMarketID);
+                System.out.println("Both should be false: " + isLayBet + " " + isBackBet + " BetCounter: " + betCounter);
+
+            }
+            ///If oddsMultiplied is > 0, BACK indicator, if < 0, LAY indicator needs to be added
 
 
+            System.out.println("nextRaceStakeMultiplied at end of loop iteration " + nextRaceStakeMultiplied);
 
-         //   printMarketBook(marketBookReturn.get(0));
-         //   printMarketBookTest(marketBookReturn.get(0));
+            System.out.println("Fav SelID at end of loop iteration: " + nextRaceFavouriteSelectionID);
+            System.out.println("Fav Odds at end of loop iteration: " + nextRaceFavouriteOdds);
 
 
-
+        //     printMarketBook(marketBookReturn.get(0));
 
 
  /**
@@ -165,9 +259,9 @@ public class ApiNGFlowController {
   * customerRef: 1 - unique reference for a transaction specified by user, must be different for each request
   *
   */
-
                 long selectionId = 0;
                 if (marketBookReturn.size() != 0) {
+
 
                     // This appears to be the point where we request the particular runner (selection)
                     //Yes indeed. Just tested and setting getRunners to get(1) places a bet on the 2nd
@@ -177,34 +271,15 @@ public class ApiNGFlowController {
                     // one has been placed, and the race hasn't yet hit the start time. That's only
                     // going to be about 5 seconds based on our sleep function, but still it's possible
 
+                    //This gets the first runner, which we don't want to limit ourselves to
                     Runner runner = marketBookReturn.get(0).getRunners().get(0);
 
-                    Runner runner2 = marketBookReturn.get(0).getRunners().get(0);
+                    System.out.println("Race Status: " + runner.getStatus());
 
-                    System.out.println("Bet this won't work: " + runner2.getStatus());
-                    ExchangePrices bob = runner2.getEx();
-                    System.out.println("bob ATB Size: " + bob.getAvailableToBack().size());
-                    System.out.println("bob0: " + bob.getAvailableToBack().get(0).getPrice());
-                   // StrategyManager strategy = new StrategyManager();
-                    if (bob.getAvailableToBack().get(0).getPrice() > 1){
-                     System.out.println("Bob is greater than 1! YES!!");
-                    }
-                    else{
-                        System.out.println("Bob not greater than 1.");
-                    }
-                    System.out.println("bob1: " + bob.getAvailableToBack().get(1));
-                    System.out.println("bob2: " + bob.getAvailableToBack().get(2));
-
-                    System.out.println("Prices for one runner: " + bob);
-
-
-
-                    selectionId = runner.getSelectionId();
-                   // System.out.println("here we are back in flow controller " + runner.getEx());
-
+                    selectionId = marketBookProcessingReturn.getKey();
 
                     System.out.println("7. Place a bet below minimum stake to prevent the bet actually " +
-                            "being placed for marketId: " + marketIdChosen + " with selectionId: " + selectionId + "...\n\n");
+                            "being placed for marketId: " + nextRaceMarketIdChosen + " with selectionId: " + selectionId + "...\n\n");
                     List<PlaceInstruction> instructions = new ArrayList<>();
                     PlaceInstruction instruction = new PlaceInstruction();
                     instruction.setHandicap(0);
@@ -223,23 +298,23 @@ public class ApiNGFlowController {
                     instructions.add(instruction);
 
                     //Build customerRef
-                    int min = 1000000, max = 9999999;
-                    int randomNum = ThreadLocalRandom.current().nextInt(min, max + 1);
+                    int minCustomerRef = 1000000, maxCustomerRef = 9999999;
+                    int randomNum = ThreadLocalRandom.current().nextInt(minCustomerRef, maxCustomerRef + 1);
                     String customerRef = ("Sharptrading" + randomNum);
 
-                    InstructionAndExecution placeBetResult = InstructionAndExecution.placeOrders(marketIdChosen, instructions, customerRef, applicationKey, sessionToken);
+   //No More Bets    InstructionAndExecution placeBetResult = InstructionAndExecution.placeOrders(nextRaceMarketIdChosen, instructions, customerRef, applicationKey, sessionToken);
 
                     // Handling the operation result
-                    if (placeBetResult.getExecutionReportStatus() == ExecutionReportStatus.SUCCESS) {
-                        System.out.println("Your bet has been placed!!");
-                        System.out.println(placeBetResult.getInstructionReports());
-                    } else if (placeBetResult.getExecutionReportStatus() == ExecutionReportStatus.FAILURE) {
-                        System.out.println("Your bet has NOT been placed.");
-                        System.out.println("The error is: " + placeBetResult.getExecutionReportErrorCode() + ": "
-                                + placeBetResult.getExecutionReportErrorCode().getMessage());
-                    }
-                } else {
-                    System.out.println("Sorry, no runners found\n\n");
+                    //No More Bets                if (placeBetResult.getExecutionReportStatus() == ExecutionReportStatus.SUCCESS) {
+                    //No More Bets                   System.out.println("Your bet has been placed!!");
+                    //No More Bets                  System.out.println(placeBetResult.getInstructionReports());
+                    //No More Bets             } else if (placeBetResult.getExecutionReportStatus() == ExecutionReportStatus.FAILURE) {
+                    //No More Bets               System.out.println("Your bet has NOT been placed.");
+                    //No More Bets                System.out.println("The error is: " + placeBetResult.getExecutionReportErrorCode() + ": "
+                    //No More Bets                     + placeBetResult.getExecutionReportErrorCode().getMessage());
+                    //No More Bets           }
+                    //No More Bets       } else {
+                    //No More Bets          System.out.println("Sorry, no runners found\n\n");
                 }
 
             } catch(APINGException apiExc){
@@ -260,10 +335,7 @@ public class ApiNGFlowController {
                 //returning the default value
                 Double def = 1000d;
                 return def;
-
-
             }
-
         }
 
 
@@ -280,7 +352,6 @@ public class ApiNGFlowController {
             }
         }
 
-
         private void printMarketCatalogue (MarketCatalogue mk){
             System.out.println("Market Name: " + mk.getMarketName() + "; Id: " + mk.getMarketId() + "\n");
             List<RunnerCatalog> runners = mk.getRunners();
@@ -291,28 +362,18 @@ public class ApiNGFlowController {
             }
         }
     private void printMarketBook (MarketBook mb) {
-        System.out.println("; Id: " + mb.getMarketId() + "\n");
+        System.out.println("Market ID: " + mb.getMarketId() + "\n");
         List<Runner> runners = mb.getRunners();
 
         if (runners != null) {
             for (Runner rCat : runners) {
                 System.out.println("Selection Id: " + rCat.getSelectionId() + "\n" +
                         "Status: " + rCat.getStatus() + "\n" +
-                        "EX: " + rCat.getEx() + "\n" +
-                        "Price: " + mb.getPrice() + "\n" +
-                        "Last Price Traded: " + rCat.getLastPriceTraded());
+                        "EX: " + rCat.getEx());
             }
         }
     }
-        private void printMarketBookTest (MarketBook mb) {
-
-            if (mb.getMarketId() != null) {
-
-                    System.out.println("mahket Id: " + mb.getMarketId());
-                }
-            }
-
-    }
+}
 
 
 

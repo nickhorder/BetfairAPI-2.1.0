@@ -1,5 +1,6 @@
 package com.nickhorder.betfairapi.api;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -8,15 +9,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Properties;
 
-public class ProgramPause {
+public class TimeHandler {
     private static Properties prop = new Properties();
-//    private Duration getTime;
-//    private Duration setTime;
-    private static long secondsBeforeStart; // = 5;
+    private static long secondsBeforeStart;
     private static String dailyPGMStartTime;
     private static String dailyPGMEndTime;
     private static long manyHoursToNextRace;
-
     private static boolean programRunning;
     private static boolean moreRacingToday = true;
     private DateTimeFormatter raceTimeFormatter = DateTimeFormatter.ofPattern(
@@ -28,7 +26,7 @@ public class ProgramPause {
     //Initialize and load in Properties file
     static {
         try {
-            InputStream in = ProgramPause.class.getResourceAsStream("/apingdemo.properties");
+            InputStream in = TimeHandler.class.getResourceAsStream("/apingdemo.properties");
             prop.load(in);
             in.close();
 
@@ -51,9 +49,7 @@ public class ProgramPause {
    The method programStartStop holds the logic on whether program can start on request from the
    user, whether it continues running or shuts down.
     */
-    public static boolean programStartStop(boolean moreRacingToday) {
-   //     String dailyPGMStartTime = "T08:00:00.000Z";
-   //     String dailyPGMEndTime = "T23:50:00.000Z";
+    public static boolean programStartStop(boolean moreRacingToday) throws FileNotFoundException {
 
         LocalDate todaysDate = LocalDate.now();
         //Build today's date with the daily start time
@@ -71,15 +67,20 @@ public class ProgramPause {
         //Convert Duration instances to Seconds
         Long secondsDifferenceToPGMStart = programStartToNow.getSeconds();
         Long secondsDifferenceToPGMClose = programFinishesIn.getSeconds();
+
         //If it's at or after the time the PGM starts (i.e 10am), but not less than the time
-        //The program finishes, program is running.
+        //The program finishes, start the program.
         if (secondsDifferenceToPGMStart <= 0 && secondsDifferenceToPGMClose > 0) {
             programRunning = true;
+
         }
+
+
         //If it comes to the time the PGM is set to shutdown and it's still running, shut it down
         if (secondsDifferenceToPGMClose == 0) {
             System.out.println("THE TIME IS " + localTime + ".SYSTEM SHUTTING DOWN!");
             programRunning = false;
+            //Write MI here
             System.exit(0);
         }
         //If there is no more racing today (decided by nextRaceSleepCalculator below), then shut down.
@@ -87,11 +88,12 @@ public class ProgramPause {
         {
             System.out.println("No More Racing Today. SYSTEM SHUTTING DOWN!");
             programRunning = false;
+            //Write MI here
             System.exit(0);
         }
         //Print seconds to console, debugging really.
-        System.out.println(secondsDifferenceToPGMStart);
-        System.out.println(secondsDifferenceToPGMClose);
+        //System.out.println(secondsDifferenceToPGMStart);
+        //System.out.println(secondsDifferenceToPGMClose);
 
         return programRunning;
     }
